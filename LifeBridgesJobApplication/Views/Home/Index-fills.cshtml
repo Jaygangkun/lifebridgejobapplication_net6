@@ -1,0 +1,492 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<script>
+    $(() => {
+        $.ajaxSetup({
+            timeout: 5000,
+            type: 'post',
+            dataType: 'json',
+            url: '/api/applications',
+            processData: false,
+        });
+
+        $('#btn_agree').button({
+            label: 'Agree',
+            disabled: true,
+            icon: 'ui-icon-check',
+        }).on('click', () => {
+            $('#agreement').fadeOut(700, function () {
+                $('#application').fadeIn(2500);
+                $('html,body').animate({ scrollTop: 0 }, 1000);
+            });
+        });
+        $('#cb_agree1')
+            .prop('checked', false)
+            .on('change', function (e) {
+                $('#btn_agree').button('option', 'disabled', !e.target.checked);
+            });
+        $('input[type="checkbox"][id^="cb_agree"]')
+            .prop('checked', false)
+            .on('change', function (e) {
+                $('#btn_submit').button('option', 'disabled', $('input[type="checkbox"][id^="cb_agree"]:checked').length < 3);
+            });
+        $('#btn_add_work').button({
+            label: 'Add work experience',
+            icon: 'ui-icon-plus',
+        }).on('click', () => add_work_experience());
+        $('#btn_add_personal_reference').button({
+            label: 'Add personal reference',
+            icon: 'ui-icon-plus',
+        }).on('click', () => add_personal_reference());
+
+        $('input[name="position"]')
+            .change(function () {
+                $('input[name="positionother"]')
+                    .prop('disabled', this.id != 'position_other')
+                    .prop('required', this.id == 'position_other')
+            });
+        // comes preselected thanks to some browsers remembering previous forms
+        $('input[name="position"]:checked').each(function (i, o) {
+            $(o).trigger('change');
+        });
+
+        $('input[name="convictedofcrime"]')
+            .change(function () {
+                $('textarea[name="priorconvictions"]')
+                    .prop('disabled', this.id != 'convictedofcrime_yes')
+                    .prop('required', this.id == 'convictedofcrime_yes')
+            })
+        // comes preselected thanks to some browsers remembering previous forms
+        $('input[name="convictedofcrime"]:checked').each(function (i, o) {
+            $(o).trigger('change');
+        });
+
+        $('input[name="certificateorlicense"]')
+            .change(function () {
+                $('input[name="certificatelist"]')
+                    .prop('disabled', this.id != 'certificateorlicense_yes')
+                    .prop('required', this.id == 'certificateorlicense_yes')
+            })
+        // comes preselected thanks to some browsers remembering previous forms
+        $('input[name="certificateorlicense"]:checked').each(function (i, o) {
+            $(o).trigger('change');
+        });
+
+        add_work_experience();
+        add_personal_reference();
+
+        $('#btn_submit').button({
+            label: 'Submit Application',
+            icon: 'ui-icon-disk',
+            disabled: true,
+        }).on('click', (e) => {
+            e.preventDefault();
+
+            if ($('form')[0].reportValidity()) {
+                var validationFailed = false;
+                $('form')
+                    .find('.work-experience')
+                    .each((i, o) => {
+                        if (!validationFailed) {
+                            var d1 = $(o).find('input[name="employmentdatefrom"]').val();
+                            var d2 = $(o).find('input[name="employmentdateto"]').val();
+                            if (d1 > d2) {
+                                toastr.error("Invalid start or end date for work experience " + (i + 1));
+                                o.scrollIntoView();
+                                validationFailed = true;
+                            }
+                        }
+                    });
+                if (validationFailed)
+                    return;
+                var data = {};
+                // NOTE: no checkboxes in use
+                $('form')
+                    .find('input[type="text"],input[type="tel"],input[type="date"],input[type="email"],select,textarea')
+                    .not('.work-experience *')
+                    .each((i, o) => data[o.name] = o.value);
+                $('form')
+                    .find('input[type="radio"]')
+                    .not('.work-experience *')
+                    .each((i, o) => {
+                        if (o.checked)
+                            data[o.name] = /_([^_]+)$/.exec(o.id)[1]; // assign everything after last _
+                    });
+
+                // Work Experiences
+                data['work-experience'] = [];
+                $('form')
+                    .find('.work-experience')
+                    .each((i, w) => {
+                        var d = {};
+                        $(w)
+                            .find('input[type="text"],input[type="tel"],input[type="date"],input[type="email"],select,textarea')
+                            .each((i, o) => d[o.name] = o.value);
+                        data['work-experience'].push(d);
+                    });
+
+                // Personal References
+                data['personal-references'] = [];
+                $('form')
+                    .find('.personal-reference')
+                    .each((i, w) => {
+                        var d = {};
+                        $(w)
+                            .find('input[type="text"],input[type="tel"],input[type="number"],select')
+                            .each((i, o) => d[o.name] = o.value);
+                        data['personal-references'].push(d);
+                    });
+
+                ajaxPromise(data)
+                    .then(ret => {
+                        $('input[type="checkbox"][id^="cb_agree"]').off();
+                        $('#btn_submit').button({
+                            disabled: true,
+                            label: 'Application sent, thanks for your interest'
+                        });
+                        toastr.success('Click here to go back to the home page', 'Application sent',
+                            {
+                                positionClass: 'toast-top-full-width',
+                                timeOut: 0,
+                                extendedTimeout: 0,
+                                closeButton: true,
+                                onclick: () => $('html,body').fadeOut(2500, () => window.location = 'http://lifebridgesonline.com/')
+                            })
+                    })
+                    .catch(reason => {
+                        toastr.error(reason);
+                    });
+            }
+        });
+
+    });
+
+    const ajaxPromise = (data) => {
+        return new Promise((resolve, reject) => {
+            $.ajax({
+                data: JSON.stringify(data)
+            })
+                .fail((jqXHR, textStatus, errorThrown) => {
+                    console.error('Promise reject', textStatus, errorThrown);
+                    reject(errorThrown);
+                })
+                .done((data, textStatus, jqXHR) => {
+                    console.log('Promise resolve', data);
+                    if (data.error)
+                        reject(data.error);
+                    if (data.data)
+                        resolve(data.data);
+                    resolve(data);
+                });
+        });
+    };
+
+    // Work Experience Functions
+    const add_work_experience = () => {
+        var work_experience_cnt = $('#work-experience-container').children('.work-experience').length;
+
+        var $section = $(`<div class="work-experience"><h2>Work Experience ` + (work_experience_cnt + 1) + `</h2><div class="flex-container">
+            <span class="flex-span">Employer:<br /><input name="place" type="text" style="width: 14em;" required value="place1"/></span>
+            <span class="flex-span">Phone:<br /><input name="employersphone" type="tel" style="width: 8em;" required value="(123)-345-3485" pattern="^[\\+]?[(]?[0-9]{3}[)]?[-\\s\\.]?[0-9]{3}[-\\s\\.]?[0-9]{4,6}$" /></span>
+            <span class="flex-span">Street:<br /><input name="street" type="text" style="width: 14em;" required value="street"/></span>
+            <span class="flex-span">City:<br /><input name="city" type="text" style="width: 10em;" required value="city"/></span>
+            <span class="flex-span">State:<br /><select name="state" required><option value="AL">Alabama</option><option value="AK">Alaska</option><option value="AZ">Arizona</option><option value="AR">Arkansas</option><option value="CA">California</option><option value="CO">Colorado</option><option value="CT">Connecticut</option><option value="DE">Delaware</option><option value="DC">District Of Columbia</option><option value="FL">Florida</option><option value="GA">Georgia</option><option value="HI">Hawaii</option><option value="ID">Idaho</option><option value="IL">Illinois</option><option value="IN">Indiana</option><option value="IA">Iowa</option><option value="KS">Kansas</option><option value="KY">Kentucky</option><option value="LA">Louisiana</option><option value="ME">Maine</option><option value="MD">Maryland</option><option value="MA">Massachusetts</option><option value="MI">Michigan</option><option value="MN">Minnesota</option><option value="MS">Mississippi</option><option value="MO">Missouri</option><option value="MT">Montana</option><option value="NE">Nebraska</option><option value="NV">Nevada</option><option value="NH">New Hampshire</option><option value="NJ">New Jersey</option><option value="NM">New Mexico</option><option value="NY">New York</option><option value="NC">North Carolina</option><option value="ND">North Dakota</option><option value="OH">Ohio</option><option value="OK">Oklahoma</option><option value="OR">Oregon</option><option value="PA">Pennsylvania</option><option value="RI">Rhode Island</option><option value="SC">South Carolina</option><option value="SD">South Dakota</option><option value="TN" selected>Tennessee</option><option value="TX">Texas</option><option value="UT">Utah</option><option value="VT">Vermont</option><option value="VA">Virginia</option><option value="WA">Washington</option><option value="WV">West Virginia</option><option value="WI">Wisconsin</option><option value="WY">Wyoming</option></select></span>
+            <span class="flex-span">Zip:<br /><input name="zip" type="text" style="width: 6em;" required value="12345" pattern="^\\d{5}(?:[-\\s]\\d{4})?$" /></span>
+            <span class="flex-span">From:<br /><input name="employmentdatefrom" type="date" style="width: 10em;" value="12/21/2011" required /></span>
+            <span class="flex-span">To:<br /><input name="employmentdateto" type="date" style="width: 10em;" value="12/21/2018" required /></span>
+            <span class="flex-span">Position:<br /><input name="position" type="text" style="width: 14em;" value="position" required /></span>
+            <span class="flex-span">Supervisor:<br /><input name="supervisor" type="text" style="width: 14em;" value="supervisor" required /></span>
+            </div>
+            <div class="flex-container">
+            <span class="flex-span">Duties:<br /><textarea name="duties" rows="8" style="min-width: 40em; width:100%" value="duties" required>duties</textarea></span>
+            </div>
+            <div class="flex-container">
+            <span class="flex-span">Salary:<br /><input name="salary" type="text" style="width: 10em;" required value="salary"/></span>
+            <span class="flex-span">Reason for leaving:<br /><input name="reasonforleaving" type="text" style="width: 20em;" required value="reasonforleaving" /></span>
+            </div><button></button></div>`);
+        $section.children('button').button({
+            label: 'Remove',
+            icon: 'ui-icon-trash',
+        }).on('click', function (e) {
+            var $section = $(e.target).parent();
+            if (confirm('Remove ' + $section.children('h2').eq(0).text() + '?')) {
+                $section.slideUp(1000, function () {
+                    $(this).remove();
+                    // renumber all the sections
+                    $('#work-experience-container').children('.work-experience').each(function (i, o) {
+                        $(o).children('h2').eq(0).text('Work Experience ' + (i + 1));
+                    });
+                });
+            }
+        });
+        $section.hide().insertBefore('#btn_add_work').fadeIn(600, function () {
+            this.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        });
+
+    };
+
+    // Personal Reference Functions
+    const add_personal_reference = () => {
+        var personal_reference_cnt = $('#personal-reference-container').children('.personal-reference').length;
+
+        var $section = $(`<div class="personal-reference"><h2>Personal Reference ` + (personal_reference_cnt + 1) + `</h2><div class="flex-container">
+            <span class="flex-span">Name:<br /><input name="name" type="text" style="width: 14em;" required value="name" /></span>
+            <span class="flex-span">Phone:<br /><input name="phone" type="tel" style="width: 8em;" required value="(234)-453-4930" pattern="^[\\+]?[(]?[0-9]{3}[)]?[-\\s\\.]?[0-9]{3}[-\\s\\.]?[0-9]{4,6}$" /></span><span class="flex-span">Years known:<br /><input name="yearsknown" type="number" value="5" style="width: 4em;" required /></span>
+            <span class="flex-span">Street:<br /><input name="street" type="text" style="width: 14em;" required value="street" /></span>
+            <span class="flex-span">City:<br /><input name="city" type="text" style="width: 10em;" required value="city"/></span>
+            <span class="flex-span">State:<br /><select name="state" required><option value="AL">Alabama</option><option value="AK">Alaska</option><option value="AZ">Arizona</option><option value="AR">Arkansas</option><option value="CA">California</option><option value="CO">Colorado</option><option value="CT">Connecticut</option><option value="DE">Delaware</option><option value="DC">District Of Columbia</option><option value="FL">Florida</option><option value="GA">Georgia</option><option value="HI">Hawaii</option><option value="ID">Idaho</option><option value="IL">Illinois</option><option value="IN">Indiana</option><option value="IA">Iowa</option><option value="KS">Kansas</option><option value="KY">Kentucky</option><option value="LA">Louisiana</option><option value="ME">Maine</option><option value="MD">Maryland</option><option value="MA">Massachusetts</option><option value="MI">Michigan</option><option value="MN">Minnesota</option><option value="MS">Mississippi</option><option value="MO">Missouri</option><option value="MT">Montana</option><option value="NE">Nebraska</option><option value="NV">Nevada</option><option value="NH">New Hampshire</option><option value="NJ">New Jersey</option><option value="NM">New Mexico</option><option value="NY">New York</option><option value="NC">North Carolina</option><option value="ND">North Dakota</option><option value="OH">Ohio</option><option value="OK">Oklahoma</option><option value="OR">Oregon</option><option value="PA">Pennsylvania</option><option value="RI">Rhode Island</option><option value="SC">South Carolina</option><option value="SD">South Dakota</option><option value="TN" selected>Tennessee</option><option value="TX">Texas</option><option value="UT">Utah</option><option value="VT">Vermont</option><option value="VA">Virginia</option><option value="WA">Washington</option><option value="WV">West Virginia</option><option value="WI">Wisconsin</option><option value="WY">Wyoming</option></select></span>
+            <span class="flex-span">Zip:<br /><input name="zip" type="text" style="width: 6em;" required value="23456" pattern="^\\d{5}(?:[-\\s]\\d{4})?$" /></span>
+            </div><button></button></div>`);
+        $section.children('button').button({
+            label: 'Remove',
+            icon: 'ui-icon-trash',
+        }).on('click', function (e) {
+            var $section = $(e.target).parent();
+            if (confirm('Remove ' + $section.children('h2').eq(0).text() + '?')) {
+                $section.slideUp(1000, function () {
+                    $(this).remove();
+                    // renumber all the sections
+                    $('#personal-reference-container').children('.personal-reference').each(function (i, o) {
+                        $(o).children('h2').eq(0).text('Personal Reference ' + (i + 1));
+                    });
+                });
+            }
+        });
+        $section.hide().insertBefore('#btn_add_personal_reference').fadeIn(600, function () {
+            this.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        });
+
+    };
+</script>
+<div id="agreement">
+    <p style="font-size: 1.25em">Welcome</p>
+    <p style="font-size: 1.25em;">We appreciate your interest in our agency for your employment needs</p>
+    <p style="font-size: 2em">LIFE BRIDGES, INC.</p>
+    <p style="font-size: 0.9em">
+P.O. BOX 29, 764 OLD CHATTANOOGA PIKE, S.W.<br />
+CLEVELAND, TN. 37364-0029<br />
+PHONE (423) 472-5268</p>
+    <div style="width: 80%; margin-left: auto; margin-right: auto; margin-top: 2em; text-align: center;">
+        <p style="font-weight: bold;">ATTENTION PROSPECTIVE EMPLOYEE</p>
+        <ul style="text-align:left;">
+            <li>Life Bridges, Inc. will complete a background check via TBI fingerprints and run your driving history.</li>
+            <li>Employees must have a clear background check.</li>
+            <li>Employees must have a valid driver's license with a clear driving history.</li>
+            <li>Life Bridges, Inc. is a drug free workplace. Applicants must submit to a drug screen.</li>
+        </ul>
+        <p style="font-weight: bold; text-align:left; text-indent: 1em; ">
+Life Bridges, Inc. does not tolerate abuse, neglect or mistreatment of the persons served by the Agency. The team approach to care-giving is used and is described by the Agency as staff working together, supporting one another and monitoring one another.
+        </p>
+        <div style="display: inline-block; text-align: left;">
+            <p>
+                <textarea style="width:46em; height: 20em;" readonly>
+        I, the undersigned applicant, certify and affirm that, to the best of my knowledge and belief: I ("have" or "have not", as applicable) had a case of abuse, neglect, mistreatment or exploitation substantiated against me.
+
+        As a condition of submitting this application and in order to verify this affirmation, I further release and authorize Life Bridges, Inc., the Tennessee Department of Intellectual and Developmental Disabilities and the Bureau of TennCare to have full and complete access to any and all current or prior personnel or investigative records, from any party, person, business, entity or agency, whether governmental or non-governmental, as pertains to any allegations against me of abuse, neglect, mistreatment or exploitation and to consider this information as may be deemed appropriate.
+
+        This authorization extends to providing any applicable information in personnel or investigative reports concerning my employment with this employer to my future employers who may be Providers of DIDD services.
+                </textarea>
+                <br>
+                <input type="checkbox" id="cb_agree1" required /><label for="cb_agree1">I have read and understand the statement written above</label>
+            </p>
+            <p><button id="btn_agree"></button></p>
+        </div>
+    </div>
+</div>
+
+
+<div id="application" style="display:none">
+<form>
+
+<div class="section">
+
+<h1>Personal Information</h1>
+
+<h2>Name</h2>
+<div class="flex-container" style="flex-flow: row wrap;">
+    <span class="flex-span">First:<br /><input name="firstname" type="text" style="width: 8em;" required value="firstname" /></span>
+    <span class="flex-span">Middle Initial:<br /><input name="middleinitial" type="text" style="width: 2em;" value="middleinitial"/></span>
+    <span class="flex-span">Last:<br /><input name="lastname" type="text" style="width: 8em;" required value="lastname"/></span>
+</div>
+
+<h2>Work Permit</h2>
+<div class="flex-container">
+    <span class="flex-span">SSN:<br /><input name="ssn" type="text" style="width: 8em;" size="9" required value="122-23-4563" pattern="^(?!0{3})(?!6{3})[0-8]\d{2}-(?!0{2})\d{2}-(?!0{4})\d{4}$" title="Format: XXX-XX-XXXX" /></span>
+    <span class="flex-span">Are you authorized to work in the U.S.?<br /><input type="radio" name="authorizedinus" checked id="authorizedinus_yes" required /><label for="authorizedinus_yes">Yes</label> <input type="radio" name="authorizedinus" id="authorizedinus_no" required /><label for="authorizedinus_no">No</label></span>
+    <span class="flex-span">If hired, can you provide the appropriate documentation to Life Bridges, Inc.<br /><input type="radio" name="canprovidedoc" checked id="canprovidedoc_yes" required /><label for="canprovidedoc_yes">Yes</label> <input type="radio" name="canprovidedoc" id="canprovidedoc_no" required /><label for="canprovidedoc_no">No</label></span>
+</div>
+
+<h2>Home Address</h2>
+<div class="flex-container">
+    <span class="flex-span">Street:<br /><input name="homeaddress-street" type="text" style="width: 14em;" required value="homeaddress-street" /></span>
+    <span class="flex-span">City:<br /><input name="homeaddress-city" type="text" style="width: 10em;" required value="homeaddress-city"/></span>
+    <span class="flex-span">State:<br /><select name="homeaddress-state" value="homeaddress-state" required><option value="AL">Alabama</option><option value="AK">Alaska</option><option value="AZ">Arizona</option><option value="AR">Arkansas</option><option value="CA">California</option><option value="CO">Colorado</option><option value="CT">Connecticut</option><option value="DE">Delaware</option><option value="DC">District Of Columbia</option><option value="FL">Florida</option><option value="GA">Georgia</option><option value="HI">Hawaii</option><option value="ID">Idaho</option><option value="IL">Illinois</option><option value="IN">Indiana</option><option value="IA">Iowa</option><option value="KS">Kansas</option><option value="KY">Kentucky</option><option value="LA">Louisiana</option><option value="ME">Maine</option><option value="MD">Maryland</option><option value="MA">Massachusetts</option><option value="MI">Michigan</option><option value="MN">Minnesota</option><option value="MS">Mississippi</option><option value="MO">Missouri</option><option value="MT">Montana</option><option value="NE">Nebraska</option><option value="NV">Nevada</option><option value="NH">New Hampshire</option><option value="NJ">New Jersey</option><option value="NM">New Mexico</option><option value="NY">New York</option><option value="NC">North Carolina</option><option value="ND">North Dakota</option><option value="OH">Ohio</option><option value="OK">Oklahoma</option><option value="OR">Oregon</option><option value="PA">Pennsylvania</option><option value="RI">Rhode Island</option><option value="SC">South Carolina</option><option value="SD">South Dakota</option><option value="TN" selected>Tennessee</option><option value="TX">Texas</option><option value="UT">Utah</option><option value="VT">Vermont</option><option value="VA">Virginia</option><option value="WA">Washington</option><option value="WV">West Virginia</option><option value="WI">Wisconsin</option><option value="WY">Wyoming</option></select></span>
+    <span class="flex-span">Zip:<br /><input name="homeaddress-zip" value="12345" type="text" style="width: 6em;" required pattern="^\d{5}(?:[-\s]\d{4})?$" /></span>
+</div>
+
+<h2>Contact Information</h2>
+<div class="flex-container">
+                <span class="flex-span">Home Telephone:<br /><input name="homephone" value="(123)-333-4235" type="tel" style="width: 8em;" pattern="^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$" /></span>
+    <span class="flex-span">Cellphone:<br /><input name="cellphone" value="(123)-333-4235" type="tel" style="width: 8em;" pattern="^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$" /></span>
+    <span class="flex-span">Cell Carrier:<br /><input name="cellcarrier" value="cellcarrier" type="text" style="width: 8em;" /></span>
+    <span class="flex-span">E-mail address:<br /><input name="email" value="test@email.com" type="email" style="width: 12em;" required /></span>
+</div>
+
+</div>
+
+<div class="section">
+
+<h1>Position</h1>
+<h2>Type of position desired</h2>
+<div class="flex-container">
+    <span class="flex-span"><input name="position" type="radio" checked id="position_direct" required /><label for="position_direct">Direct Care</label> <input name="position" checked type="radio" id="position_nursing" required /><label for="position_nursing">Nursing</label> <input name="position" type="radio" id="position_other" required /><label for="position_other">Other:</label> <input name="positionother" type="text" style="width: 14em;" placeholder="Please specify" disabled /></span>
+</div>
+
+<h2>Shift Desired</h2>
+<div class="flex-container">
+    <span class="flex-span">1<sup>st</sup> choice:<br /><input name="firstchoice" value="firstchoice" type="text" style="width: 8em;" /></span>
+    <span class="flex-span">2<sup>nd</sup> choice:<br /><input name="secondchoice" value="secondchoice" type="text" style="width: 8em;" /></span>
+</div>
+
+<h1>Emergency Contact Information</h1>
+<div class="flex-container">
+    <span class="flex-span">Name:<br /><input name="emergencycontact" value="emergencycontact" type="text" style="width: 10em;" /></span>
+    <span class="flex-span">Relationship:<br /><input name="emergencyrelationship" value="emergencyrelationship" type="text" style="width: 10em;" /></span>
+    <span class="flex-span">Telephone:<br /><input name="emergencytelephone" value="(324)-324-4839" type="tel" style="width: 8em;" pattern="^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$" /></span>
+    <span class="flex-span">Address:<br /><input name="emergencyaddress" value="emergencyaddress" type="text" style="width: 20em;" /></span>
+</div>
+
+</div>
+<div class="section">
+
+<h1>Background</h1>
+<div class="flex-container">
+    <span class="flex-span">How did you find out about employment with our Agency?<br /><input name="howfindout" value="howfindout" type="text" style="width: 24em;" /></span>
+    <span class="flex-span">Driver's license number and state (must be valid)<br /><input name="driverslicense" value="driverslicense" type="text" style="width: 14em;" /></span>
+    <p class="form-field-comment">
+    Please note: Some positions require an F- endorsement on the driver's license. Applicant will be informed during interview process if position requires the endorsement.</p>
+
+    <span class="flex-span">Have you had any traffic violation or citations within the last 3 years?<br /><input type="radio" name="trafficviolations" checked id="trafficviolations_yes" required /><label for="trafficviolations_yes">Yes</label> <input type="radio" name="trafficviolations" id="trafficviolations_no" required /><label for="trafficviolations_no">No</label></span>
+
+    <span class="flex-span">Have you had any "at fault" accidents within the last 3 years?<br /><input type="radio" name="faultaccidents" checked id="faultaccidents_yes" required /><label for="faultaccidents_yes">Yes</label> <input type="radio" name="faultaccidents" id="faultaccidents_no" required /><label for="faultaccidents_no">No</label></span>
+    <p class="form-field-comment">
+    Please note: Life Bridges, Inc. will complete a driving history and can not hire if you have more than 3 violations on your driving history within a 2 year period.</p>
+    <span class="flex-span">Have you ever been convicted of a crime?<br /><input type="radio" name="convictedofcrime" checked id="convictedofcrime_yes" required /><label for="convictedofcrime_yes">Yes</label> <input type="radio" name="convictedofcrime" id="convictedofcrime_no" required /><label for="convictedofcrime_no">No</label></span>
+    <p class="form-field-comment">Please note: Life Bridges, Inc. will complete a background check via TBI finger print checks. All employees must have a clear background.</p>
+</div>
+<div class="flex-container">
+    <span class="flex-span" style="flex:1">Please list any and all prior convictions:<br /><textarea name="priorconvictions" rows="8" style="min-width: 40em; width:100%" disabled>asdwer</textarea></span>
+</div>
+<div class="flex-container">
+    <span class="flex-span" >Have you ever been required to register as a sexual offender?<br /><input type="radio" checked name="sexoffender" id="sexoffender_yes" required /><label for="sexoffender_yes">Yes</label> <input type="radio" name="sexoffender" id="sexoffender_no" required /><label for="sexoffender_no">No</label></span>
+</div>
+
+</div>
+<div class="section">
+
+<h1>Educational Background</h1>
+<div class="flex-container">
+    <p class="form-field-comment">Some positions require Diploma, Degree or License/Certifications and must be provided for employment considerations.</p>
+
+    <span class="flex-span">Do you have a High School Diploma or Equivalent (GED)?<br /><input type="radio" checked name="highschooldiploma" id="highschooldiploma_yes" required /><label for="highschooldiploma_yes">Yes</label> <input type="radio" name="highschooldiploma" id="highschooldiploma_no" required /><label for="highschooldiploma_no">No</label></span>
+    
+    <span class="flex-span">Do you have a University or College Degree?<br /><input type="radio" checked name="collegedegree" id="collegedegree_yes" required /><label for="collegedegree_yes">Yes</label> <input type="radio" name="collegedegree" id="collegedegree_no" required /><label for="collegedegree_no">No</label></span>
+    
+    <span class="flex-span">Do you have a professional certification or license?<br /><input type="radio" checked name="certificateorlicense" id="certificateorlicense_yes" required /><label for="certificateorlicense_yes">Yes</label> <input type="radio" name="certificateorlicense" id="certificateorlicense_no" required /><label for="certificateorlicense_no">No</label> <input name="certificatelist" type="text" value="asdwe" style="width: 20em;" placeholder="Please specify" disabled /></span>
+</div>
+
+</div>
+<div class="section">
+
+<h1>Work Experience</h1>
+<p class="form-comment">Please list a 5 year work history (if applicable) and at least 3 previous employers to verify employment. If there is a job that we should not contact please note on application.</p>
+
+
+<div id="work-experience-container">
+<button id="btn_add_work"></button>
+</div>
+
+</div>
+
+<p class="form-comment">
+Life Bridges, Inc. is an equal opportunity employer, and selects the best matched individual for the job, based upon job-related qualifications, regardless of race, color, creed, sex, national origin, age, handicap or other protected groups under State, Federal or local Equal Opportunity Laws.</p>
+
+<div class="form-comment">I understand and agree that:
+
+<ol>
+    <li>Any material misrepresentation or deliberate omission of a fact in my application may be justification for refusal of, or if employed, termination from employment.</li>
+    <li>It is my understanding that the agency will make a thorough investigation of my entire work and personal history, in order to verify all data given in my application for employment, related papers, or oral interviews. I authorize such investigation and the giving or receiving of any information by the agency and release from liability any person giving or receiving any such other derogatory information discovered which as a result of this investigation may prevent me being hired, or if hired, may subject me to immediate dismissal.</li>
+    <li>I agree that my employment may be terminated by this agency at any time without liability for wages or salary, except such as may have been earned at the date of such termination. I authorize any physician or hospital to release any information which may be necessary to determine my ability to perform the duties of a job I am being considered for, prior to my employment or in the future, during my employment with the agency.</li>
+    <li>Although management makes every effort to accommodate individual preferences, business needs may, at times, make the following condition mandatory; overtime, a rotating work schedule, or a work schedule other than Monday through Friday. I understand and accept these conditions of continuing employment.</li>
+    <li>I understand that I must be at least 18 years old to secure employment and that evidence of this must be furnished, if hired.</li>
+    <li>I understand and agree that as a condition of employment, I must submit to required pre-employment drug screening and, if hired, will be required to submit to random drug screening.</li>
+    <li>I fully acknowledge and agree that should any drug screening for illegal drugs result in a positive testing, I will not be considered for employment. I also agree and fully understand that, if hired, should any testing result in a positive testing, I will be terminated.</li>
+    <li>I understand I will be required to submit to fingerprinting, should I be hired, for the purpose of a criminal investigation to be conducted by the TBI and/or FBI. I also agree and fully understand that, if hired, should any criminal background information disqualify me for employment with this agency, I will be terminated.</li>
+    <li>I understand I will be required to comply with Title VI, which states, "No person in the United States shall, on the grounds of race, color or national origin, be excluded from participation in, be denied the benefits of, or be subjected to discrimination under any program or activity receiving federal financial assistance".</li>
+    <li>I understand that I will be required to complete and competently pass all required training within the required timeframes. If I do not complete training within the required timeframe or I do not competently pass any training session (including Medication Administration and / or CPR), I will be terminated.</li>
+    <li>I understand I am required to have a valid Driver's License and upon employment I will be required to obtain an F endorsement or comparable unless exempt due to modified job responsibilities.</li>
+</ol>
+</div>
+
+<p class="form-comment">
+I further understand that this is an application for employment and no employment contract is being offered. I also understand that if I am employed, it is for an indefinite period of time and that the agency can change wages, benefits and conditions at any time.<br />
+
+<input id="cb_agree2" type="checkbox" required /><label for="cb_agree2">I have read and fully understand the above.</label>
+</p>
+
+
+
+<h1>DRUG AND ALCOHOL ABUSE POLICY STATEMENT</h1>
+<div class="form-comment">
+Life Bridges, Inc. is committed to providing a safe work environment and to fostering the well-being and health of its employees. This commitment is jeopardized when a Life Bridges, Inc. employee illegally uses drugs or alcohol on the job, comes to work under their influence, or possesses, distributes or sells drugs or alcohol in the workplace; therefore, Life Bridges, Inc. has established the following policy:
+
+<ol>
+    <li>It is a violation of company policy for any employee to possess, sell, trade, or offer for sale illegal drugs or alcohol or otherwise engage in the illegal use of drugs or alcohol on the job.</li>
+    <li>It is a violation of company policy for anyone to report to work under the influence of illegal drugs or alcohol.</li>
+    <li>It is a violation of company policy for anyone to use prescription drugs illegally.</li>
+    <li>It is the policy of this company that all job applicants undergo a pre-placement drug and alcohol screen.</li>
+    <li>All employees with on the job injuries requiring medical attention are required to undergo a post-accident drug and alcohol screen.</li>
+    <li>Violations of this policy are subject to disciplinary action up to and including termination.</li>
+</ol>
+
+<p>
+It is the responsibility of the company's supervisors to counsel employees whenever they see changes in performance or behavior that suggest an employee has a drug or alcohol problem. Although it is not the supervisor's job to diagnose personal problems, the supervisor should encourage such employees to seek help and advise them about available resources for getting help. Everyone shares responsibility for maintaining a safe work environment and co-workers should encourage anyone who may have a drug or alcohol problem to seek help.
+</p>
+
+The goal of this policy is to balance our respect for individuals with the need to maintain a safe, productive, and drug-free environment. The intent of this policy is to offer a helping hand to those who need it, while sending a clear message that the <b>illegal use of drugs is incompatible with employment at Life Bridges, Inc.</b></p>
+</div>
+
+<div class="section">
+<h1>Personal References</h1>
+<div class="form-comment">
+Notes:
+<ul>
+    <li><u>Do not</u> give <u>relatives</u> as personal reference.</li>
+    <li>At least one reference must have known you for at least five years.</li>
+    <li>You must list 5 personal references.</li>
+</ul>
+</div>
+
+<div id="personal-reference-container">
+<button id="btn_add_personal_reference"></button>
+</div>
+</div>
+
+<div class="form-comment">
+<input id="cb_agree3" type="checkbox" required checked/><label for="cb_agree3">I authorize any business and/or individuals to release any information which may be necessary to determine my ability to perform the duties of a job I am being considered for, prior to my employment or in the future, during my employment with the agency.</label><br /><br />
+<button id="btn_submit">Submit Application</button>
+</div>
+
+</form>
+</div>
+<div class="footnote">
+If you experience technical problems using the online job application form, please email <a href="mailto:melvinbrooks@lifebridgesonline.com">MelvinBrooks@LifeBridgesOnline.com</a>
+</div>

@@ -1,0 +1,185 @@
+* {
+    font-family: Quicksand, sans-serif;
+    font-size: 12pt;
+}
+
+body {
+    margin: 0;
+    background-image: url("https://lifebridgesonline.com/wp-content/uploads/2020/08/bg.jpg");
+    background-repeat: repeat;
+}
+
+a {
+    color: #2b74c7;
+}
+
+    a:hover {
+        color: #ffac00;
+    }
+
+table {
+    border-collapse: collapse;
+}
+
+div {
+    margin: 0;
+    padding: 0;
+}
+
+    div.section {
+        border-radius: 25px;
+        border: 3px solid #f74f22;
+        background: #faf6f3;
+        padding: 10px;
+        margin-top: 20px;
+        margin-bottom: 20px;
+    }
+
+.flex-container {
+    display: flex;
+    flex-wrap: wrap;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.flex-span {
+    display: inline;
+    margin: 4px 4px 2px 4px;
+    white-space: nowrap;
+    flex: 0;
+}
+
+.wrap {
+    white-space: normal;
+}
+
+#agreement,
+#application {
+    margin: 20px 20px 20px 20px;
+    width: 60%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#agreement {
+    text-align: center;
+}
+
+#personal-reference-container,
+#work-experience-container {
+    margin: 20px 0 20px 0;
+    text-align: left;
+}
+
+.personal-reference,
+.work-experience {
+    margin: 20px 0 20px 0;
+    border: 1px solid #d8d8d8;
+    padding: 4px 4px 4px 4px;
+    background-color: #f8f8f8;
+}
+
+    .personal-reference button,
+    .work-experience button {
+        margin: 16px 0 10px 4px;
+    }
+
+textarea {
+    resize: none;
+    font-size: 0.75em;
+    font-family: monospace;
+}
+
+h1 {
+    text-align: center;
+    /* margin: 0.75em 0 0.25em 0.25em; */
+    /* font-family: "Amatic SC"; */
+    font-family: "Nunito Sans";
+    font-weight: bold;
+    font-size: 3em;
+}
+
+h2 {
+    text-align: left;
+    margin: 0.75em 0 0.25em 0.25em;
+    font-size: 1.1em;
+}
+
+h3 {
+    text-align: left;
+    margin: 0.75em 0 0.25em 0.25em;
+    font-weight: bold;
+}
+
+.form-section {
+    text-align: left;
+    margin: 10px 0 0 4px;
+}
+
+.form-field-comment {
+    text-align: left;
+    margin: 0 0 4px 4px;
+    white-space: normal;
+    font-size: 0.8em;
+}
+
+.form-comment * {
+    text-align: left;
+    margin: 4px 0 4px 4px;
+    white-space: normal;
+    font-size: 0.9em;
+}
+
+.footnote,
+.footnote * {
+    font-size: small;
+    text-align: center;
+    margin: 40px 0 0 0;
+    margin-left: auto;
+    margin-right: auto;
+    background: black;
+    color: white;
+    height: 30px;
+    padding: 20px 10px 10px 10px;
+}
+
+li {
+    font-size: 0.9em;
+}
+
+textarea:required,
+input:required {
+    /* Doesn't work with Edge: box-shadow: 2px 2px 10px rgba(255, 0, 0, 0.25); */
+    filter: drop-shadow(0px 0px 2px rgba(255, 0, 0, 0.45));
+}
+
+textarea:optional,
+input:optional {
+    filter: none;
+}
+
+textarea:required:valid,
+input:required:valid {
+    filter: drop-shadow(0px 0px 2px rgba(0, 255, 0, 0.45));
+}
+
+textarea:disabled,
+input:disabled {
+    background-color: rgba(0,0,0,0.05);
+}
+
+input:valid {
+    box-shadow: none;
+}
+
+.ui-widget, .ui-widget-content {
+    background: #f74f22 !important;
+    color: white;
+    font-weight: 700;
+    border: 1px solid black;
+    font-family: "Nunito Sans", sans-serif;
+}
+
+    .ui-widget:hover, .ui-widget-content:hover {
+        background: #ffac00 !important;
+    }

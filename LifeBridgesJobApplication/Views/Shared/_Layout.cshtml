@@ -1,0 +1,48 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="~/Bridge6FavIcon-150x150.png" sizes="32x32" />
+    <link rel="icon" href="~/Bridge6FavIcon-240x240.png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="~/Bridge6FavIcon-240x240.png" />
+    <title>Life Bridges, Inc. Job Application</title>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+    <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.css" />
+
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <script>
+        /* You can add more configuration options to webfontloader by previously defining the WebFontConfig with your options */
+        if (typeof WebFontConfig === "undefined") {
+            WebFontConfig = new Object();
+        }
+        /* WGL CUSTOM TYPOGRAPHY FIX */
+        WebFontConfig['google'] = { families: ['Nunito+Sans:400,600,700', 'Quicksand:700,400,500,600', 'Amatic+SC:700,400, 700'] };
+        /* \ WGL CUSTOM TYPOGRAPHY FIX */
+
+        (function () {
+            var wf = document.createElement('script');
+            wf.src = 'https://ajax.googleapis.com/ajax/libs/webfont/1.5.3/webfont.js';
+            wf.type = 'text/javascript';
+            wf.async = 'true';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(wf, s);
+        })();
+    </script>
+</head>
+<body>
+      @RenderBody()
+
+@*    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)*@
+</body>
+</html>
